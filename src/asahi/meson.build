@@ -21,9 +21,8 @@ endif
 if with_gallium_asahi or with_asahi_vk
    subdir('layout')
    subdir('lib')
-elif dep_iokit.found()
+elif with_tools.contains('asahi')
    # Just build enough for libwrap.dylib
-   subdir('genxml')
    subdir('lib')
 endif
 

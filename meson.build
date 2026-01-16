@@ -331,6 +331,7 @@ with_vdrm = [
   freedreno_kmds.contains('virtio'),
   with_gallium_asahi,
   with_asahi_vk,
+  with_tools.contains('asahi'),
 ].contains(true)
 
 with_dri = false
