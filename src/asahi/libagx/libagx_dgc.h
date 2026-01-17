@@ -11,13 +11,13 @@
 
 #define agx_push(ptr, T, cfg)                                                  \
    for (unsigned _loop = 0; _loop < 1;                                         \
-        ++_loop, ptr = (GLOBAL void *)(((uintptr_t)ptr) + AGX_##T##_LENGTH))   \
+        ++_loop, ptr = AGX_PTR_CAST(ptr, ((uintptr_t)ptr) + AGX_##T##_LENGTH)) \
       agx_pack(ptr, T, cfg)
 
 #define agx_push_packed(ptr, src, T)                                           \
    static_assert(sizeof(src) == AGX_##T##_LENGTH);                             \
    memcpy(ptr, &src, sizeof(src));                                             \
-   ptr = (GLOBAL void *)(((uintptr_t)ptr) + sizeof(src));
+   ptr = AGX_PTR_CAST(ptr, ((uintptr_t)ptr) + sizeof(src));
 
 static inline enum agx_index_size
 agx_translate_index_size(uint8_t size_B)
@@ -28,7 +28,7 @@ agx_translate_index_size(uint8_t size_B)
    static_assert(__builtin_ctz(4) == AGX_INDEX_SIZE_U32);
 
    assert((size_B == 1) || (size_B == 2) || (size_B == 4));
-   return __builtin_ctz(size_B);
+   return (enum agx_index_size)__builtin_ctz(size_B);
 }
 
 static inline unsigned
@@ -157,8 +157,8 @@ agx_draw_indexed(uint32_t index_count, uint32_t instance_count,
       .start = first_index,
       .index_bias = index_bias,
       .start_instance = first_instance,
-      .index_size = index_size,
       .restart = restart,
+      .index_size = index_size,
       .indexed = true,
    };
 }
@@ -171,8 +171,8 @@ agx_draw_indexed_indirect(uint64_t ptr, uint64_t buf, uint32_t range_B,
       .b = agx_grid_indirect(ptr),
       .index_buffer = buf,
       .index_buffer_range_B = range_B,
-      .index_size = index_size,
       .restart = restart,
+      .index_size = index_size,
       .indexed = true,
    };
 }
@@ -541,10 +541,10 @@ static struct agx_usc_builder
 agx_usc_builder(GLOBAL void *out, ASSERTED size_t size)
 {
    return (struct agx_usc_builder){
-      .head = out,
+      .head = (GLOBAL uint8_t *)out,
 
 #ifndef NDEBUG
-      .begin = out,
+      .begin = (uint8_t *)out,
       .size = size,
 #endif
    };
@@ -611,8 +611,9 @@ agx_usc_words_precomp(GLOBAL uint32_t *out, CONST struct agx_shader *s,
 static inline unsigned
 libagx_draw_robust_index_vdm_size()
 {
-   struct agx_draw draw = agx_draw_indexed(0, 0, 0, 0, 0, 0, 0, 0, 0);
-   return agx_vdm_draw_size(0, draw);
+   struct agx_draw draw =
+      agx_draw_indexed(0, 0, 0, 0, 0, 0, 0, (enum agx_index_size)0, false);
+   return agx_vdm_draw_size((enum agx_chip)0, draw);
 }
 
 static inline unsigned

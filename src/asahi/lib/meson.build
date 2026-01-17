@@ -87,6 +87,22 @@ if with_tests and (with_gallium_asahi or with_asahi_vk)
   )
 endif
 
+if with_tests and (with_gallium_asahi or with_asahi_vk)
+  test(
+    'libasahi_device_macos_tests',
+    executable(
+      'libasahi_device_macos_tests',
+      files('tests/test-device-macos.cpp'),
+      include_directories : [inc_include, inc_src, inc_asahi, inc_virtio_gpu, inc_virtio_vdrm],
+      gnu_symbol_visibility : 'hidden',
+      dependencies: [idep_gtest, dep_libdrm, dep_valgrind],
+      link_with : [libasahi_lib, libasahi_layout],
+    ),
+    suite : ['asahi'],
+    protocol : 'gtest',
+  )
+endif
+
 if dep_iokit.found()
   libasahi_wrap = shared_library(
     'wrap',

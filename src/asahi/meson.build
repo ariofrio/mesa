@@ -6,7 +6,7 @@
 dep_iokit = dependency('IOKit', required : false)
 
 inc_asahi = include_directories([
-   '.', 'layout', 'lib', 'genxml', 'compiler'
+   '.', 'layout', 'lib', 'genxml', 'compiler', 'libagx'
 ])
 
 subdir('isa')

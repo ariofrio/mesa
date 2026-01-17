@@ -20,6 +20,10 @@
 #include "layout.h"
 #include "libagx_dgc.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "vdrm.h"
 
 #include "asahi_proto.h"
@@ -240,7 +244,7 @@ void agx_close_device(struct agx_device *dev);
 static inline struct agx_bo *
 agx_lookup_bo(struct agx_device *dev, uint32_t handle)
 {
-   return util_sparse_array_get(&dev->bo_map, handle);
+   return (struct agx_bo *)util_sparse_array_get(&dev->bo_map, handle);
 }
 
 uint32_t agx_create_command_queue(struct agx_device *dev,
@@ -265,7 +269,18 @@ void agx_get_device_uuid(const struct agx_device *dev, void *uuid);
 void agx_get_driver_uuid(void *uuid);
 unsigned agx_get_num_cores(const struct agx_device *dev);
 
+/*
+ * Suppress C++ warning about returning incomplete type through C linkage.
+ * The struct is defined in agx_compile.h; this declaration is correct.
+ */
+#ifdef __cplusplus
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+#endif
 struct agx_device_key agx_gather_device_key(struct agx_device *dev);
+#ifdef __cplusplus
+#pragma clang diagnostic pop
+#endif
 
 struct agx_va *agx_va_alloc(struct agx_device *dev, uint64_t size_B,
                             uint64_t align_B, enum agx_va_flags flags,
@@ -276,10 +291,14 @@ static inline struct drm_asahi_cmd_header
 agx_cmd_header(bool compute, uint16_t barrier_vdm, uint16_t barrier_cdm)
 {
    return (struct drm_asahi_cmd_header){
-      .cmd_type = compute ? DRM_ASAHI_CMD_COMPUTE : DRM_ASAHI_CMD_RENDER,
-      .size = compute ? sizeof(struct drm_asahi_cmd_compute)
-                      : sizeof(struct drm_asahi_cmd_render),
+      .cmd_type = (__u16)(compute ? DRM_ASAHI_CMD_COMPUTE : DRM_ASAHI_CMD_RENDER),
+      .size = (__u16)(compute ? sizeof(struct drm_asahi_cmd_compute)
+                              : sizeof(struct drm_asahi_cmd_render)),
       .vdm_barrier = barrier_vdm,
       .cdm_barrier = barrier_cdm,
    };
 }
+
+#ifdef __cplusplus
+}
+#endif

@@ -12,6 +12,10 @@
 #include <time.h>
 #include "util/list.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct agx_device;
 
 enum agx_bo_flags {
@@ -139,3 +143,7 @@ struct agx_bo *agx_bo_cache_fetch(struct agx_device *dev, size_t size,
                                   size_t align, uint32_t flags,
                                   const bool dontwait);
 void agx_bo_cache_evict_all(struct agx_device *dev);
+
+#ifdef __cplusplus
+}
+#endif

@@ -88,13 +88,26 @@ __gen_from_groups(uint32_t value, uint32_t group_size, uint32_t length)
    return group_size * (value ? value : (1 << length));
 }
 
+/*
+ * OpenCL requires explicit address space qualifiers (GLOBAL = global), while
+ * C++ requires explicit casts from void* to typed pointers. Use __typeof__ for
+ * C/C++ to maintain type safety, and GLOBAL void* for OpenCL to preserve
+ * address space information that NIR needs.
+ */
+#ifdef __OPENCL_VERSION__
+#define AGX_PTR_CAST(ptr, expr) ((GLOBAL void *)(expr))
+#else
+#define AGX_PTR_CAST(ptr, expr) ((__typeof__(ptr))(expr))
+#endif
+
 #define agx_pack(dst, T, name)                                                 \
    for (struct AGX_##T name = {AGX_##T##_header},                              \
-                       *_loop_count = (GLOBAL void *)((uintptr_t)0);           \
+                       *_loop_count = AGX_PTR_CAST(_loop_count, (uintptr_t)0); \
         (uintptr_t)_loop_count < 1; (                                          \
            {                                                                   \
               AGX_##T##_pack((GLOBAL uint32_t *)(dst), &name);                 \
-              _loop_count = (GLOBAL void *)(((uintptr_t)_loop_count) + 1);     \
+              _loop_count =                                                    \
+                 AGX_PTR_CAST(_loop_count, ((uintptr_t)_loop_count) + 1);      \
            }))
 
 #define agx_unpack(fp, src, T, name)                                           \
