@@ -68,7 +68,7 @@ libasahi_lib = static_library(
   build_by_default : false,
 )
 
-if with_tests
+if with_tests and (with_gallium_asahi or with_asahi_vk)
   test(
     'libasahi_tests',
     executable(
