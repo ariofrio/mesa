@@ -15,7 +15,6 @@ jobs:
     runs-on: ${{ matrix.macos_version }}
     env:
       GALLIUM_DUMP_CPU: true
-      MESON_EXEC: /Users/runner/Library/Python/3.11/bin/meson
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,28 +29,28 @@ jobs:
           brew "libxdamage"
           brew "libxext"
           brew "molten-vk"
+          brew "meson"
           brew "ninja"
           brew "pkg-config"
-          brew "python@3.10"
           EOL
 
           brew update
           brew bundle --verbose
-      - name: Install Mako and meson
-        run: pip3 install --user --break-system-packages mako meson
+      - name: Install Mako
+        run: pip3 install --user --break-system-packages mako
       - name: Configure
         run: |
           cat > native_config <<EOL
           [binaries]
           llvm-config = '/usr/local/opt/llvm/bin/llvm-config'
           EOL
-          $MESON_EXEC . build --native-file=native_config -Dmoltenvk-dir=$(brew --prefix molten-vk) -Dbuild-tests=true -Dgallium-drivers=swrast,zink -Dglx=${{ matrix.glx_option }}
+          meson setup . build --native-file=native_config -Dmoltenvk-dir=$(brew --prefix molten-vk) -Dbuild-tests=true -Dgallium-drivers=swrast,zink -Dglx=${{ matrix.glx_option }}
       - name: Build
-        run: $MESON_EXEC compile -C build
+        run: meson compile -C build
       - name: Test
-        run: $MESON_EXEC test -C build --print-errorlogs
+        run: meson test -C build --print-errorlogs
       - name: Install
-        run: $MESON_EXEC install -C build --destdir $PWD/install
+        run: meson install -C build --destdir $PWD/install
       - name: "Upload Artifact"
         if: always()
         uses: actions/upload-artifact@v4
