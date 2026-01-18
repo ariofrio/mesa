@@ -10,8 +10,9 @@ jobs:
   macOS-CI:
     strategy:
       matrix:
+        macos_version: ["macos-14", "macos-15", "macos-26"]
         glx_option: ["dri", "xlib"]
-    runs-on: macos-11
+    runs-on: ${{ matrix.macos_version }}
     env:
       GALLIUM_DUMP_CPU: true
       MESON_EXEC: /Users/runner/Library/Python/3.11/bin/meson
@@ -55,7 +56,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: macos-${{ matrix.glx_option }}-result
+          name: ${{ matrix.macos_version }}-${{ matrix.glx_option }}-result
           path: |
             build/meson-logs/
             install/
