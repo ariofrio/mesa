@@ -2171,7 +2171,7 @@ if with_platform_x11
       with_any_vk)
     dep_xcb_xfixes = dependency('xcb-xfixes')
   endif
-  if with_any_vk
+  if with_any_vk or (with_gallium_zink and not with_platform_android)
     dep_xcb_dri3 = dependency('xcb-dri3', version : dep_xcb_dri3_version)
     dep_xcb_present = dependency('xcb-present', version : dep_xcb_present_version)
     dep_xcb_shm = dependency('xcb-shm')
