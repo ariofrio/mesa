@@ -38,7 +38,7 @@ jobs:
           brew update
           brew bundle --verbose
       - name: Install Mako and meson
-        run: pip3 install --user mako meson
+        run: pip3 install --user --break-system-packages mako meson
       - name: Configure
         run: |
           cat > native_config <<EOL
