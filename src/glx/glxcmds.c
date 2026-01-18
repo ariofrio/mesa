@@ -1227,7 +1227,7 @@ _GLX_PUBLIC
 GLX_ALIAS(Display *, glXGetCurrentDisplayEXT, (void), (),
           glXGetCurrentDisplay)
 
-#ifndef GLX_USE_APPLEGL
+#if !defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE)
 _GLX_PUBLIC GLXContext
 glXImportContextEXT(Display *dpy, GLXContextID contextID)
 {
@@ -2338,7 +2338,7 @@ static const struct name_address_pair GLX_functions[] = {
    GLX_FUNCTION(glXQueryCurrentRendererStringMESA),
 
    /*** GLX_MESA_gl_interop ***/
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
    GLX_FUNCTION2(glXGLInteropQueryDeviceInfoMESA, MesaGLInteropGLXQueryDeviceInfo),
    GLX_FUNCTION2(glXGLInteropExportObjectMESA, MesaGLInteropGLXExportObject),
    GLX_FUNCTION2(glXGLInteropFlushObjectsMESA, MesaGLInteropGLXFlushObjects),
@@ -2403,7 +2403,7 @@ GLX_ALIAS(__GLXextFuncPtr, glXGetProcAddress,
           (const GLubyte * procName),
           (procName), glXGetProcAddressARB)
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
 
 PUBLIC int
 MesaGLInteropGLXQueryDeviceInfo(Display *dpy, GLXContext context,
@@ -2465,4 +2465,4 @@ MesaGLInteropGLXFlushObjects(Display *dpy, GLXContext context,
    return ret;
 }
 
-#endif /* defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL) */
+#endif /* defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE)) */

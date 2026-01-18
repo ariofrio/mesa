@@ -206,6 +206,8 @@ DestroyDRIDrawable(Display *dpy, GLXDrawable drawable)
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
 int
 dri3_get_buffer_age(__GLXDRIdrawable *pdraw);
+#endif
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
 int
 kopper_get_buffer_age(__GLXDRIdrawable *pdraw);
 #endif
@@ -234,7 +236,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
    unsigned int num_attributes;
    int found = 0;
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
    __GLXDRIdrawable *pdraw;
 #endif
 
@@ -262,7 +264,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
    if (!opcode)
       return 0;
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
    pdraw = GetGLXDRIDrawable(dpy, drawable);
 
    if (attribute == GLX_BACK_BUFFER_AGE_EXT) {
@@ -286,9 +288,12 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
 
       psc = pdraw->psc;
 
+#if !defined(GLX_USE_APPLEGL)
       if (psc->display->driver == GLX_DRIVER_DRI3)
          *value = dri3_get_buffer_age(pdraw);
-      else if (psc->display->driver == GLX_DRIVER_ZINK_YES)
+      else
+#endif
+      if (psc->display->driver == GLX_DRIVER_ZINK_YES)
          *value = kopper_get_buffer_age(pdraw);
 
       return 1;
@@ -346,7 +351,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
             }
          }
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
          if (pdraw != NULL) {
             if (!pdraw->textureTarget)
                pdraw->textureTarget =
@@ -364,7 +369,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
    UnlockDisplay(dpy);
    SyncHandle();
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
    if (pdraw && attribute == GLX_FBCONFIG_ID && !found) {
       /* If we failed to lookup the GLX_FBCONFIG_ID, it may be because the drawable is
        * a bare Window, so try differently by first figure out its visual, then GLX
@@ -774,7 +779,7 @@ glXQueryDrawable(Display * dpy, GLXDrawable drawable,
 }
 
 
-#ifndef GLX_USE_APPLEGL
+#if !defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE)
 /**
  * Query an attribute of a pbuffer.
  */
@@ -926,7 +931,7 @@ glXDestroyPixmap(Display * dpy, GLXPixmap pixmap)
 _GLX_PUBLIC void
 glXDestroyWindow(Display * dpy, GLXWindow win)
 {
-#ifndef GLX_USE_APPLEGL
+#if !defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE)
    DestroyDrawable(dpy, (GLXDrawable) win, X_GLXDestroyWindow);
 #endif
 }
@@ -967,7 +972,7 @@ glXCreateGLXPixmap(Display * dpy, XVisualInfo * vis, Pixmap pixmap)
    GLXPixmap xid;
    CARD8 opcode;
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
    struct glx_display *const priv = __glXInitialize(dpy);
 
    if (priv == NULL)
@@ -1000,7 +1005,7 @@ glXCreateGLXPixmap(Display * dpy, XVisualInfo * vis, Pixmap pixmap)
       return None;
    }
 
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+#if defined(GLX_DIRECT_RENDERING) && (!defined(GLX_USE_APPLEGL) || defined(GLX_USE_APPLE))
    do {
       /* FIXME: Maybe delay struct dri_drawable creation until the drawable
        * is actually bound to a context... */
