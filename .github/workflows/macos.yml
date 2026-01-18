@@ -25,6 +25,7 @@ jobs:
           brew "bison"
           brew "expat"
           brew "gettext"
+          brew "libclc"
           brew "libx11"
           brew "libxcb"
           brew "libxdamage"
@@ -35,6 +36,8 @@ jobs:
           brew "libxshmfence"
           brew "llvm"
           brew "lld"
+          brew "spirv-llvm-translator"
+          brew "spirv-tools"
           brew "molten-vk"
           brew "meson"
           brew "ninja"
@@ -63,7 +66,7 @@ jobs:
           EOL
           fi
 
-          meson setup . build --native-file=native_config -Dmoltenvk-dir=$(brew --prefix molten-vk) -Dbuild-tests=true -Dgallium-drivers=llvmpipe,zink -Dglx=${{ matrix.glx_option }}
+          meson setup . build --native-file=native_config -Dmoltenvk-dir=$(brew --prefix molten-vk) -Dbuild-tests=true -Dgallium-drivers=llvmpipe,zink -Dglx=${{ matrix.glx_option }} -Dtools=asahi
       - name: Build
         run: meson compile -C build
       - name: Test
