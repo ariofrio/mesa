@@ -39,8 +39,8 @@ enum agx_selector {
    AGX_SELECTOR_GET_GLOBAL_IDS = 0x6,
    AGX_SELECTOR_SET_API = 0x7,
    AGX_SELECTOR_CREATE_COMMAND_QUEUE = 0x8,
-   AGX_SELECTOR_FREE_COMMAND_QUEUE = 0x9,
-   AGX_SELECTOR_ALLOCATE_MEM = 0xA,
+   AGX_SELECTOR_ALLOCATE_MEM = 0x9,
+   AGX_UNKNOWN_A = 0xA,
    AGX_SELECTOR_FREE_MEM = 0xB,
    AGX_SELECTOR_CREATE_SHMEM = 0xF,
    AGX_SELECTOR_FREE_SHMEM = 0x10,
@@ -62,11 +62,13 @@ struct IOAccelCommandQueueSubmitArgs_Command {
 } __attribute__((packed));
 
 struct agx_allocate_resource_resp {
-   /* Returned GPU virtual address */
-   uint64_t gpu_va;
+   uint32_t unk0[2];
 
    /* Returned CPU virtual address */
    uint64_t cpu;
+
+   /* Returned GPU virtual address */
+   uint64_t gpu_va;
 
    uint32_t unk4[3];
 
@@ -116,7 +118,8 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
     * else. This is technically wrong but it works in practice, and reduces the
     * surface area we need to wrap.
     */
-   if (selector == AGX_SELECTOR_SET_API) {
+   if (selector == AGX_SELECTOR_SET_API ||
+       selector == AGX_SELECTOR_ALLOCATE_MEM) {
       metal_connection = connection;
    } else if (metal_connection != connection) {
       return IOConnectCallMethod(connection, selector, input, inputCnt,
@@ -215,8 +218,7 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
    }
 
    case AGX_SELECTOR_ALLOCATE_MEM: {
-      assert((*outputStructCntP) == 0x50);
-      const struct agx_allocate_resource_req *req = inputStruct;
+      assert((*outputStructCntP) == 0x58);
       struct agx_allocate_resource_resp *resp = outputStruct;
 
       struct agx_va *va = malloc(sizeof(struct agx_va));

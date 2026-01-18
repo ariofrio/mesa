@@ -114,4 +114,25 @@ if dep_iokit.found()
     build_by_default : with_tools.contains('asahi'),
     link_with: libasahi_decode,
   )
+
+  if with_tests
+    dep_metal = dependency('Metal', required : false)
+    dep_foundation = dependency('Foundation', required : false)
+
+    if dep_metal.found() and dep_foundation.found()
+      test_wrap_metal = executable(
+        'test-wrap-metal',
+        files('tests/test-wrap-metal.m'),
+        dependencies : [dep_metal, dep_foundation],
+      )
+
+      test(
+        'libasahi_wrap_smoke_test',
+        test_wrap_metal,
+        env : ['DYLD_INSERT_LIBRARIES=' + libasahi_wrap.full_path()],
+        suite : ['asahi'],
+        depends : [libasahi_wrap],
+      )
+    endif
+  endif
 endif
