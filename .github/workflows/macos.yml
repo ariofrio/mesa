@@ -11,9 +11,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        macos_version: ["macos-14", "macos-15", "macos-26"]
+        runner:
+          - macos-15
+          - macos-26
         glx_option: ["dri", "xlib"]
-    runs-on: ${{ matrix.macos_version }}
+    runs-on: ${{ matrix.runner }}
     env:
       GALLIUM_DUMP_CPU: true
     steps:
@@ -56,16 +58,6 @@ jobs:
           llvm-config = '$(brew --prefix llvm)/bin/llvm-config'
           EOL
 
-          if [ "${{ matrix.macos_version }}" = "macos-14" ]; then
-            cat >> native_config <<EOL
-          c = '$(brew --prefix llvm)/bin/clang'
-          cpp = '$(brew --prefix llvm)/bin/clang++'
-          [built-in options]
-          c_link_args = ['-fuse-ld=$(brew --prefix lld)/bin/ld64.lld']
-          cpp_link_args = ['-fuse-ld=$(brew --prefix lld)/bin/ld64.lld', '-L$(brew --prefix llvm)/lib/c++', '-Wl,-rpath,$(brew --prefix llvm)/lib/c++']
-          EOL
-          fi
-
           meson setup . build --native-file=native_config -Dmoltenvk-dir=$(brew --prefix molten-vk) -Dbuild-tests=true -Dgallium-drivers=llvmpipe,zink -Dglx=${{ matrix.glx_option }} -Dtools=asahi
       - name: Build
         run: meson compile -C build
@@ -77,7 +69,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.macos_version }}-${{ matrix.glx_option }}-result
+          name: ${{ matrix.runner }}-${{ matrix.glx_option }}-result
           path: |
             build/meson-logs/
             install/
