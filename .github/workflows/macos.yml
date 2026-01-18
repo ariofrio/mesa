@@ -37,7 +37,7 @@ jobs:
           brew update
           brew bundle --verbose
       - name: Install Mako
-        run: pip3 install --user --break-system-packages mako
+        run: pip3 install --user --break-system-packages mako packaging
       - name: Configure
         run: |
           cat > native_config <<EOL
