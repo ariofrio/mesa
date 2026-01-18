@@ -9,6 +9,7 @@ permissions:
 jobs:
   macOS-CI:
     strategy:
+      fail-fast: false
       matrix:
         macos_version: ["macos-14", "macos-15", "macos-26"]
         glx_option: ["dri", "xlib"]
