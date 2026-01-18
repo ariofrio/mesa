@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/sysctl.h>
 
 #include <IOKit/IODataQueueClient.h>
 #include <IOKit/IOKitLib.h>
@@ -15,6 +16,7 @@
 
 #include "util/compiler.h"
 #include "util/u_hexdump.h"
+#include "agx_iokit.h"
 #include "decode.h"
 #include "dyld_interpose.h"
 #include "util.h"
@@ -22,82 +24,9 @@
 #define HANDLE(x) (x ^ (1 << 29))
 
 /*
- * This section contains the minimal set of definitions to trace the macOS
- * (IOKit) interface to the AGX accelerator.
- * They are not used under Linux.
- *
- * Information is this file was originally determined independently. More
- * recently, names have been augmented via the oob_timestamp code sample from
- * Project Zero [1]
- *
- * [1] https://bugs.chromium.org/p/project-zero/issues/detail?id=1986
- */
-
-#define AGX_SERVICE_TYPE 0x100005
-
-enum agx_selector {
-   AGX_SELECTOR_GET_GLOBAL_IDS = 0x6,
-   AGX_SELECTOR_SET_API = 0x7,
-   AGX_SELECTOR_CREATE_COMMAND_QUEUE = 0x8,
-   AGX_SELECTOR_ALLOCATE_MEM = 0x9,
-   AGX_UNKNOWN_A = 0xA,
-   AGX_SELECTOR_FREE_MEM = 0xB,
-   AGX_SELECTOR_CREATE_SHMEM = 0xF,
-   AGX_SELECTOR_FREE_SHMEM = 0x10,
-   AGX_SELECTOR_CREATE_NOTIFICATION_QUEUE = 0x11,
-   AGX_SELECTOR_FREE_NOTIFICATION_QUEUE = 0x12,
-   AGX_SELECTOR_SUBMIT_COMMAND_BUFFERS = 0x1E,
-   AGX_SELECTOR_GET_VERSION = 0x2A,
-   AGX_NUM_SELECTORS = 0x33
-};
-
-struct IOAccelCommandQueueSubmitArgs_Command {
-   uint32_t command_buffer_shmem_id;
-   uint32_t segment_list_shmem_id;
-   uint64_t unk1B; // 0, new in 12.x
-   uint64_t notify_1;
-   uint64_t notify_2;
-   uint32_t unk2;
-   uint32_t unk3;
-} __attribute__((packed));
-
-struct agx_allocate_resource_resp {
-   uint32_t unk0[2];
-
-   /* Returned CPU virtual address */
-   uint64_t cpu;
-
-   /* Returned GPU virtual address */
-   uint64_t gpu_va;
-
-   uint32_t unk4[3];
-
-   /* Handle used to identify the resource in the segment list */
-   uint32_t handle;
-
-   /* Size of the root resource from which we are allocated. If this is not a
-    * suballocation, this is equal to the size.
-    */
-   uint64_t root_size;
-
-   /* Globally unique identifier for the resource, shown in Instruments */
-   uint32_t guid;
-
-   uint32_t unk11[7];
-
-   /* Maximum size of the suballocation. For a suballocation, this equals:
-    *
-    *    sub_size = root_size - (sub_cpu - root_cpu)
-    *
-    * For root allocations, this equals the size.
-    */
-   uint64_t sub_size;
-} __attribute__((packed));
-
-/*
  * Wrap IOKit entrypoints to intercept communication between the AGX kernel
- * extension and userspace clients. IOKit prototypes are public from the IOKit
- * source release.
+ * extension and userspace clients. IOKit prototypes are public from the
+ * IOKit source release.
  */
 
 mach_port_t metal_connection = 0;
@@ -118,8 +47,8 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
     * else. This is technically wrong but it works in practice, and reduces the
     * surface area we need to wrap.
     */
-   if (selector == AGX_SELECTOR_SET_API ||
-       selector == AGX_SELECTOR_ALLOCATE_MEM) {
+   if (selector == agx_selector(AGX_SELECTOR_LABEL_SET_API) ||
+       selector == agx_selector(AGX_SELECTOR_LABEL_ALLOCATE_MEM)) {
       metal_connection = connection;
    } else if (metal_connection != connection) {
       return IOConnectCallMethod(connection, selector, input, inputCnt,
@@ -136,8 +65,8 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
    assert((outputStruct != NULL) == (outputStructCntP != 0));
 
    /* Dump inputs */
-   switch (selector) {
-   case AGX_SELECTOR_SET_API:
+   switch (agx_selector_label(selector)) {
+   case AGX_SELECTOR_LABEL_SET_API:
       assert(input == NULL && output == NULL && outputStruct == NULL);
       assert(inputStruct != NULL && inputStructCnt == 16);
       assert(((uint8_t *)inputStruct)[15] == 0x0);
@@ -145,7 +74,7 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
       printf("%X: SET_API(%s)\n", connection, (const char *)inputStruct);
       break;
 
-   case AGX_SELECTOR_SUBMIT_COMMAND_BUFFERS: {
+   case AGX_SELECTOR_LABEL_SUBMIT_COMMAND_BUFFERS: {
       assert(output == NULL && outputStruct == NULL);
       // assert(inputCnt == 1);
 
@@ -192,8 +121,8 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
       printf("return %u\n", ret);
 
    /* Track allocations for later analysis (dumping, disassembly, etc) */
-   switch (selector) {
-   case AGX_SELECTOR_CREATE_SHMEM: {
+   switch (agx_selector_label(selector)) {
+   case AGX_SELECTOR_LABEL_CREATE_SHMEM: {
       assert(inputCnt == 2);
       assert((*outputStructCntP) == 0x10);
       uint64_t *inp = (uint64_t *)input;
@@ -217,25 +146,25 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
       break;
    }
 
-   case AGX_SELECTOR_ALLOCATE_MEM: {
-      assert((*outputStructCntP) == 0x58);
-      struct agx_allocate_resource_resp *resp = outputStruct;
+   case AGX_SELECTOR_LABEL_ALLOCATE_MEM: {
+      struct agx_allocate_resource_resp resp =
+         get_agx_allocate_resource_resp(outputStruct, *outputStructCntP);
 
       struct agx_va *va = malloc(sizeof(struct agx_va));
-      va->addr = resp->gpu_va;
-      va->size_B = resp->sub_size;
+      va->addr = resp.gpu_va;
+      va->size_B = resp.sub_size;
 
       agxdecode_track_alloc(decode_ctx, &(struct agx_bo){
-                                           .size = resp->sub_size,
-                                           .handle = resp->handle,
+                                           .size = resp.sub_size,
+                                           .handle = resp.handle,
                                            .va = va,
-                                           ._map = (void *)resp->cpu,
+                                           ._map = (void *)resp.cpu,
                                         });
 
       break;
    }
 
-   case AGX_SELECTOR_FREE_MEM: {
+   case AGX_SELECTOR_LABEL_FREE_MEM: {
       assert(inputCnt == 1);
       assert(inputStruct == NULL);
       assert(output == NULL);
@@ -246,7 +175,7 @@ wrap_Method(mach_port_t connection, uint32_t selector, const uint64_t *input,
       break;
    }
 
-   case AGX_SELECTOR_FREE_SHMEM: {
+   case AGX_SELECTOR_LABEL_FREE_SHMEM: {
       assert(inputCnt == 1);
       assert(inputStruct == NULL);
       assert(output == NULL);

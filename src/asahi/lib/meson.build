@@ -106,7 +106,7 @@ endif
 if dep_iokit.found()
   libasahi_wrap = shared_library(
     'wrap',
-    'wrap.c',
+    ['wrap.c', 'agx_iokit.c'],
     include_directories : [inc_src, inc_asahi],
     dependencies : [idep_mesautil, dep_iokit],
     c_args : [no_override_init_args, '-Wno-missing-prototypes'],
