@@ -34,6 +34,7 @@ jobs:
           brew "libxrender"
           brew "libxshmfence"
           brew "llvm"
+          brew "lld"
           brew "molten-vk"
           brew "meson"
           brew "ninja"
@@ -51,6 +52,17 @@ jobs:
           bison = '$(brew --prefix bison)/bin/bison'
           llvm-config = '$(brew --prefix llvm)/bin/llvm-config'
           EOL
+
+          if [ "${{ matrix.macos_version }}" = "macos-14" ]; then
+            cat >> native_config <<EOL
+          c = '$(brew --prefix llvm)/bin/clang'
+          cpp = '$(brew --prefix llvm)/bin/clang++'
+          [built-in options]
+          c_link_args = ['-fuse-ld=$(brew --prefix lld)/bin/ld64.lld']
+          cpp_link_args = ['-fuse-ld=$(brew --prefix lld)/bin/ld64.lld', '-L$(brew --prefix llvm)/lib/c++', '-Wl,-rpath,$(brew --prefix llvm)/lib/c++']
+          EOL
+          fi
+
           meson setup . build --native-file=native_config -Dmoltenvk-dir=$(brew --prefix molten-vk) -Dbuild-tests=true -Dgallium-drivers=llvmpipe,zink -Dglx=${{ matrix.glx_option }}
       - name: Build
         run: meson compile -C build
