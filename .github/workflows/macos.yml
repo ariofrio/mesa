@@ -72,5 +72,6 @@ jobs:
           name: ${{ matrix.runner }}-${{ matrix.glx_option }}-result
           path: |
             build/meson-logs/
+            build/agxdecode.*
             install/
           retention-days: 5
